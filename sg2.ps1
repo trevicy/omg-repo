@@ -82,7 +82,7 @@ while($i -lt 200){
 
   $graphics.CopyFromScreen($bounds.Location, [Drawing.Point]::Empty, $bounds.size)
 
-  $bmp.Save("$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture1.png")
+  $bmp.Save("$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture1-$i.png")
   $graphics.Dispose()
   $bmp.Dispose()
   
