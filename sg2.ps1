@@ -88,7 +88,7 @@ finally {
     foreach($path in $pathsToClean) {
         if (Test-Path $path) {
             # -Recurse elimina sottocartelle/file, -Force forza l'eliminazione di file nascosti/sola lettura
-            Remove-Item $path -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item $path -Recurse -Force -Verbose -ErrorAction SilentlyContinue
         }
     }
 }
